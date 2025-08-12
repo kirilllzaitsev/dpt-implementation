@@ -16,10 +16,15 @@ class Trainer:
         self.optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
         self.logger = logging
 
+        self.logger.info(
+            f"self.model.parameters={sum(p.numel() for p in self.model.parameters() if p.requires_grad)}"
+        )
+
     def train(self, dataloaders):
         hist = defaultdict(list)
         self.model.to(self.args.device)
-        for epoch in tqdm(range(self.args.epochs)):
+        pbar = tqdm(total=self.args.epochs, desc="Training")
+        for epoch in range(self.args.epochs):
             self.model.train()
             for batch in dataloaders["train"]:
                 self.optimizer.zero_grad()
@@ -35,9 +40,11 @@ class Trainer:
                 outputs = self.model(images)
                 loss = self.compute_loss(outputs, batch)
                 hist["val_loss"].append(loss.item())
-            self.logger.info(
-                f"Epoch {epoch}: Train Loss: {np.mean(hist['train_loss']):.4f}, Val Loss: {np.mean(hist['val_loss']):.4f}"
+            pbar.set_postfix(
+                train_loss=np.mean(hist["train_loss"]),
+                val_loss=np.mean(hist["val_loss"]),
             )
+            pbar.update(1)
         return hist
 
     def compute_loss(self, outputs, batch):
@@ -48,9 +55,6 @@ def main(args):
     x = torch.randn(1, 3, 256, 256)
     hw = x.shape[-2:]
     dpt = DPT(hw=hw)
-    print(
-        f"dpt.parameters={sum(p.numel() for p in dpt.parameters() if p.requires_grad)}"
-    )
     trainer = Trainer(args=args, model=dpt)
 
     train_loader = [
