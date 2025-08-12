@@ -17,3 +17,11 @@ class CNNFeatureExtractor(nn.Module):
     def forward(self, x):
         features = self.features(x)
         return list(features.values())
+
+
+if __name__ == "__main__":
+    extractor = CNNFeatureExtractor().cuda()
+    inp = torch.randn(1, 3, 256, 256).cuda()
+    outs = extractor(inp)
+    for i, out in outs:
+        print(f"{i}: {out.shape}")
