@@ -45,7 +45,7 @@ class ReassembleBlock(nn.Module):
             F.interpolate,
             size=(hw[0] // s, hw[1] // s),
             mode="bilinear",
-            align_corners=False,
+            align_corners=False,True
         )
         self.proj = nn.Conv2d(inch, outch, kernel_size=1, stride=1, padding=0)
 
@@ -65,7 +65,7 @@ class FusionBlock(nn.Module):
         self.inch = inch
         self.outch = outch
         self.downsample = functools.partial(
-            F.interpolate, scale_factor=2, mode="bilinear", align_corners=False
+            F.interpolate, scale_factor=2, mode="bilinear", align_corners=True
         )
         self.rb1 = ResBlock(inch, inch)
         self.rb2 = ResBlock(inch, outch)
@@ -82,4 +82,27 @@ class FusionBlock(nn.Module):
         x = self.rb1(x1) + x2
         x = self.rb2(x)
         x = self.downsample(x)
+        return x
+
+
+class HeadBlock(nn.Module):
+    def __init__(self, inch, outch, scale_factor=None):
+        super(HeadBlock, self).__init__()
+        self.inch = inch
+        self.outch = outch
+        self.scale_factor = scale_factor
+
+        self.head = nn.Sequential(
+            nn.Conv2d(inch, inch, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(inch, outch, kernel_size=1, stride=1),
+        )
+
+    def forward(self, x):
+        if self.scale_factor is not None:
+            x = F.interpolate(
+                x, scale_factor=self.scale_factor, mode="bilinear", align_corners=True
+            )
+
+        x = self.head(x)
         return x
