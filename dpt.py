@@ -4,8 +4,8 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from feature_extractor import CNNFeatureExtractor
+from utils.misc import to_tuple
 
 
 class ResBlock(nn.Module):
@@ -111,8 +111,10 @@ class HeadBlock(nn.Module):
 
 
 class DPT(nn.Module):
-    def __init__(self, extractor_name="resnet50"):
+    def __init__(self, hw, extractor_name="resnet50"):
         super().__init__()
+
+        self.hw = to_tuple(hw)
 
         if extractor_name == "resnet50":
             self.extractor = CNNFeatureExtractor()
@@ -131,19 +133,21 @@ class DPT(nn.Module):
         self.transformer_block1 = nn.TransformerEncoderLayer(
             d_model=64, nhead=4, dim_feedforward=1024, dropout=0.0
         )
-        self.reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=32, hw=hw)
-        self.reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=32, hw=hw)
-        self.reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=32, hw=hw)
-        self.reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=32, hw=hw)
+        self.reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=32, hw=self.hw)
+        self.reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=32, hw=self.hw)
+        self.reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=32, hw=self.hw)
+        self.reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=32, hw=self.hw)
         self.fusion_block4 = FusionBlock(inch=32, outch=32)
         self.fusion_block3 = FusionBlock(inch=32, outch=32)
         self.fusion_block2 = FusionBlock(inch=32, outch=32)
         self.fusion_block1 = FusionBlock(inch=32, outch=32)
-        self.head_block = HeadBlock(32, 1, scale_factor=2)
+        self.head_block = HeadBlock(inch=32, outch=1, scale_factor=2)
 
     def forward(self, x):
         features = self.extractor(x)
-        tokens1, tokens2, tokens3, tokens4 = [f.flatten(-2, -1).transpose(-2, -1) for f in features]
+        tokens1, tokens2, tokens3, tokens4 = [
+            f.flatten(-2, -1).transpose(-2, -1) for f in features
+        ]
         top4 = self.fusion_block4(
             self.reassemble_block4(self.transformer_block4(tokens4))
         )
@@ -161,13 +165,9 @@ class DPT(nn.Module):
 
 
 if __name__ == "__main__":
-    hw = (256, 256)
-    tokens4 = torch.randn(1, 8 * 8, 512)
-    tokens3 = torch.randn(1, 16 * 16, 256)
-    tokens2 = torch.randn(1, 32 * 32, 128)
-    tokens1 = torch.randn(1, 64 * 64, 64)
     x = torch.randn(1, 3, 256, 256)
-    dpt = DPT()
+    hw = x.shape[-2:]
+    dpt = DPT(hw=hw)
     out = dpt(x)
     depth = out["depth"]
     print(f"{depth.shape=}")

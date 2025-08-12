@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
+import torchvision.models.feature_extraction
 
 
 class CNNFeatureExtractor(nn.Module):
