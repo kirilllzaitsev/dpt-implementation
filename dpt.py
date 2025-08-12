@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from feature_extractor import CNNFeatureExtractor
+
 
 class ResBlock(nn.Module):
     def __init__(self, inch, outch):
@@ -108,37 +110,63 @@ class HeadBlock(nn.Module):
         return x
 
 
+class DPT(nn.Module):
+    def __init__(self, extractor_name="resnet50"):
+        super().__init__()
+
+        if extractor_name == "resnet50":
+            self.extractor = CNNFeatureExtractor()
+        else:
+            raise ValueError(f"{extractor_name=} is not supported")
+
+        self.transformer_block4 = nn.TransformerEncoderLayer(
+            d_model=512, nhead=4, dim_feedforward=1024, dropout=0.0
+        )
+        self.transformer_block3 = nn.TransformerEncoderLayer(
+            d_model=256, nhead=4, dim_feedforward=1024, dropout=0.0
+        )
+        self.transformer_block2 = nn.TransformerEncoderLayer(
+            d_model=128, nhead=4, dim_feedforward=1024, dropout=0.0
+        )
+        self.transformer_block1 = nn.TransformerEncoderLayer(
+            d_model=64, nhead=4, dim_feedforward=1024, dropout=0.0
+        )
+        self.reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=32, hw=hw)
+        self.reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=32, hw=hw)
+        self.reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=32, hw=hw)
+        self.reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=32, hw=hw)
+        self.fusion_block4 = FusionBlock(inch=32, outch=32)
+        self.fusion_block3 = FusionBlock(inch=32, outch=32)
+        self.fusion_block2 = FusionBlock(inch=32, outch=32)
+        self.fusion_block1 = FusionBlock(inch=32, outch=32)
+        self.head_block = HeadBlock(32, 1, scale_factor=2)
+
+    def forward(self, x):
+        top4 = self.fusion_block4(
+            self.reassemble_block4(self.transformer_block4(tokens4))
+        )
+        top3 = self.fusion_block3(
+            self.reassemble_block3(self.transformer_block3(tokens3)), top4
+        )
+        top2 = self.fusion_block2(
+            self.reassemble_block2(self.transformer_block2(tokens2)), top3
+        )
+        top1 = self.fusion_block1(
+            self.reassemble_block1(self.transformer_block1(tokens1)), top2
+        )
+        depth = self.head_block(top1)
+        return {"depth": depth}
+
+
 if __name__ == "__main__":
     hw = (256, 256)
     tokens4 = torch.randn(1, 8 * 8, 512)
     tokens3 = torch.randn(1, 16 * 16, 256)
     tokens2 = torch.randn(1, 32 * 32, 128)
     tokens1 = torch.randn(1, 64 * 64, 64)
-    transformer_block4 = nn.TransformerEncoderLayer(
-        d_model=512, nhead=4, dim_feedforward=1024, dropout=0.0
-    )
-    transformer_block3 = nn.TransformerEncoderLayer(
-        d_model=256, nhead=4, dim_feedforward=1024, dropout=0.0
-    )
-    transformer_block2 = nn.TransformerEncoderLayer(
-        d_model=128, nhead=4, dim_feedforward=1024, dropout=0.0
-    )
-    transformer_block1 = nn.TransformerEncoderLayer(
-        d_model=64, nhead=4, dim_feedforward=1024, dropout=0.0
-    )
-    reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=32, hw=hw)
-    reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=32, hw=hw)
-    reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=32, hw=hw)
-    reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=32, hw=hw)
-    fusion_block4 = FusionBlock(inch=32, outch=32)
-    fusion_block3 = FusionBlock(inch=32, outch=32)
-    fusion_block2 = FusionBlock(inch=32, outch=32)
-    fusion_block1 = FusionBlock(inch=32, outch=32)
-    top4 = fusion_block4(reassemble_block4(transformer_block4(tokens4)))
-    top3 = fusion_block3(reassemble_block3(transformer_block3(tokens3)), top4)
-    top2 = fusion_block2(reassemble_block2(transformer_block2(tokens2)), top3)
-    top1 = fusion_block1(reassemble_block1(transformer_block1(tokens1)), top2)
-    head_block = HeadBlock(inch=32, outch=1, scale_factor=2)
-    depth = head_block(top1)
+    x = torch.randn(1, 3, 256, 256)
+    dpt = DPT()
+    out = dpt(x)
+    depth = out["depth"]
     print(f"{depth.shape=}")
     assert depth.shape == (1, 1, *hw)
