@@ -31,7 +31,7 @@ class ResBlock(nn.Module):
         out = F.relu(out)
         if self.shortcut is not None:
             x = self.shortcut(x)
-            out += x
+            out = out + x
         return out
 
 
