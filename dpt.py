@@ -133,15 +133,15 @@ class DPT(nn.Module):
         self.transformer_block1 = nn.TransformerEncoderLayer(
             d_model=64, nhead=4, dim_feedforward=1024, dropout=0.0
         )
-        self.reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=32, hw=self.hw)
-        self.reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=32, hw=self.hw)
-        self.reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=32, hw=self.hw)
-        self.reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=32, hw=self.hw)
-        self.fusion_block4 = FusionBlock(inch=32, outch=32)
-        self.fusion_block3 = FusionBlock(inch=32, outch=32)
-        self.fusion_block2 = FusionBlock(inch=32, outch=32)
-        self.fusion_block1 = FusionBlock(inch=32, outch=32)
-        self.head_block = HeadBlock(inch=32, outch=1, scale_factor=2)
+        self.reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=128, hw=self.hw)
+        self.reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=128, hw=self.hw)
+        self.reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=128, hw=self.hw)
+        self.reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=128, hw=self.hw)
+        self.fusion_block4 = FusionBlock(inch=128, outch=128)
+        self.fusion_block3 = FusionBlock(inch=128, outch=128)
+        self.fusion_block2 = FusionBlock(inch=128, outch=128)
+        self.fusion_block1 = FusionBlock(inch=128, outch=128)
+        self.head_block = HeadBlock(inch=128, outch=1, scale_factor=2)
 
     def forward(self, x):
         features = self.extractor(x)

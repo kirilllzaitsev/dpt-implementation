@@ -48,6 +48,9 @@ def main(args):
     x = torch.randn(1, 3, 256, 256)
     hw = x.shape[-2:]
     dpt = DPT(hw=hw)
+    print(
+        f"dpt.parameters={sum(p.numel() for p in dpt.parameters() if p.requires_grad)}"
+    )
     trainer = Trainer(args=args, model=dpt)
 
     train_loader = [
