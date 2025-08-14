@@ -20,6 +20,24 @@ class CNNFeatureExtractor(nn.Module):
         return list(features.values())
 
 
+class TransformerFeatureExtractor(nn.Module):
+    def __init__(self, backbone=None):
+        super().__init__()
+        self.backbone = backbone
+        self.model = torchvision.models.vit_b_16(weights="DEFAULT")
+        self.model.heads = nn.Identity()
+        self.features = torchvision.models.feature_extraction.create_feature_extractor(
+            self.model,
+            return_nodes={
+                f"encoder.layers.encoder_layer_{i}": str(i) for i in range(2, 12, 3)
+            },
+        )
+
+    def forward(self, x):
+        features = self.features(x)
+        return [f[:, 1:] for f in features.values()]
+
+
 if __name__ == "__main__":
     extractor = CNNFeatureExtractor().cuda()
     inp = torch.randn(1, 3, 256, 256).cuda()
