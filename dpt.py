@@ -149,9 +149,7 @@ class DPT(nn.Module):
 
     def forward(self, x):
         features = self.extractor(x)
-        tokens1, tokens2, tokens3, tokens4 = [
-            f.flatten(-2, -1).transpose(-2, -1) for f in features
-        ]
+        tokens1, tokens2, tokens3, tokens4 = features
         top4 = self.fusion_block4(
             self.reassemble_block4(self.transformer_block4(tokens4))
         )

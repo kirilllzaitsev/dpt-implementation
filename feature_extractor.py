@@ -17,7 +17,7 @@ class CNNFeatureExtractor(nn.Module):
 
     def forward(self, x):
         features = self.features(x)
-        return list(features.values())
+        return [f.flatten(-2, -1).transpose(-2, -1) for f in features.values()]
 
 
 class TransformerFeatureExtractor(nn.Module):
