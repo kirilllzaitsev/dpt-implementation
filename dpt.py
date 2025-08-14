@@ -4,7 +4,11 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from feature_extractor import CNNFeatureExtractor
+from feature_extractor import (
+    CNNFeatureExtractor,
+    HybridFeatureExtractor,
+    TransformerFeatureExtractor,
+)
 from utils.misc import to_tuple
 
 
@@ -125,22 +129,52 @@ class DPT(nn.Module):
         else:
             self.extractor = CNNFeatureExtractor(backbone=extractor_name)
 
+        # for cnn extractor
+        block4_inch = 512
+        block3_inch = 256
+        block2_inch = 128
+        block1_inch = 64
         self.transformer_block4 = nn.TransformerEncoderLayer(
-            d_model=512, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=block4_inch, nhead=4, dim_feedforward=1024, dropout=0.0
         )
         self.transformer_block3 = nn.TransformerEncoderLayer(
-            d_model=256, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=block3_inch, nhead=4, dim_feedforward=1024, dropout=0.0
         )
         self.transformer_block2 = nn.TransformerEncoderLayer(
-            d_model=128, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=block2_inch, nhead=4, dim_feedforward=1024, dropout=0.0
         )
         self.transformer_block1 = nn.TransformerEncoderLayer(
-            d_model=64, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=block1_inch, nhead=4, dim_feedforward=1024, dropout=0.0
         )
-        self.reassemble_block4 = ReassembleBlock(s=32, inch=512, outch=128, hw=self.hw)
-        self.reassemble_block3 = ReassembleBlock(s=16, inch=256, outch=128, hw=self.hw)
-        self.reassemble_block2 = ReassembleBlock(s=8, inch=128, outch=128, hw=self.hw)
-        self.reassemble_block1 = ReassembleBlock(s=4, inch=64, outch=128, hw=self.hw)
+
+        # transformer extractor does not need another transformer layer
+        if "vit_" in extractor_name:
+            self.transformer_block4 = nn.Identity()
+            self.transformer_block3 = nn.Identity()
+            self.transformer_block2 = nn.Identity()
+            self.transformer_block1 = nn.Identity()
+            block4_inch = 768
+            block3_inch = 768
+            block2_inch = 768
+            block1_inch = 768
+        elif extractor_name == "hybrid":
+            self.transformer_block4 = nn.Identity()
+            self.transformer_block3 = nn.Identity()
+            block4_inch = 768
+            block3_inch = 768
+
+        self.reassemble_block4 = ReassembleBlock(
+            s=32, inch=block4_inch, outch=128, hw=self.hw
+        )
+        self.reassemble_block3 = ReassembleBlock(
+            s=16, inch=block3_inch, outch=128, hw=self.hw
+        )
+        self.reassemble_block2 = ReassembleBlock(
+            s=8, inch=block2_inch, outch=128, hw=self.hw
+        )
+        self.reassemble_block1 = ReassembleBlock(
+            s=4, inch=block1_inch, outch=128, hw=self.hw
+        )
         self.fusion_block4 = FusionBlock(inch=128, outch=128)
         self.fusion_block3 = FusionBlock(inch=128, outch=128)
         self.fusion_block2 = FusionBlock(inch=128, outch=128)
@@ -167,9 +201,10 @@ class DPT(nn.Module):
 
 
 if __name__ == "__main__":
-    x = torch.randn(1, 3, 256, 256)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    x = torch.randn(1, 3, 224, 224).to(device)
     hw = x.shape[-2:]
-    dpt = DPT(hw=hw)
+    dpt = DPT(hw=hw, extractor_name="hybrid").to(device)
     out = dpt(x)
     depth = out["depth"]
     print(f"{depth.shape=}")
