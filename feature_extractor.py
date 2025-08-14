@@ -21,10 +21,13 @@ class CNNFeatureExtractor(nn.Module):
 
 
 class TransformerFeatureExtractor(nn.Module):
-    def __init__(self, backbone=None):
+    def __init__(self, backbone=None, weights="DEFAULT", image_size=224):
+        if weights == "DEFAULT":
+            assert image_size == 224, "To use pretrained, image_size must be 224"
+
         super().__init__()
         self.backbone = backbone
-        self.model = torchvision.models.vit_b_16(weights="DEFAULT")
+        self.model = torchvision.models.vit_b_16(weights=weights, image_size=image_size)
         self.model.heads = nn.Identity()
         self.features = torchvision.models.feature_extraction.create_feature_extractor(
             self.model,
@@ -39,14 +42,21 @@ class TransformerFeatureExtractor(nn.Module):
 
 
 class HybridFeatureExtractor(nn.Module):
-    def __init__(self, cnn_backbone=None, transformer_backbone=None):
+    def __init__(
+        self, cnn_backbone=None, transformer_backbone=None, transformer_kwargs=None
+    ):
         super().__init__()
 
         self.cnn_backbone = cnn_backbone
         self.transformer_backbone = transformer_backbone
+        self.transformer_kwargs = (
+            {} if transformer_kwargs is None else transformer_kwargs
+        )
 
         self.cnn_extractor = CNNFeatureExtractor(cnn_backbone)
-        self.transformer_extractor = TransformerFeatureExtractor(transformer_backbone)
+        self.transformer_extractor = TransformerFeatureExtractor(
+            transformer_backbone, **self.transformer_kwargs
+        )
 
     def forward(self, x):
         cnn_features = self.cnn_extractor(x)[:2]
