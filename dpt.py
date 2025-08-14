@@ -116,10 +116,14 @@ class DPT(nn.Module):
 
         self.hw = to_tuple(hw)
 
-        if extractor_name == "resnet50":
-            self.extractor = CNNFeatureExtractor()
+        if "vit_" in extractor_name:
+            self.extractor = TransformerFeatureExtractor(backbone=extractor_name)
+        elif extractor_name == "hybrid":
+            self.extractor = HybridFeatureExtractor(
+                cnn_backbone="resnet50", transformer_backbone="vit_b_16"
+            )
         else:
-            raise ValueError(f"{extractor_name=} is not supported")
+            self.extractor = CNNFeatureExtractor(backbone=extractor_name)
 
         self.transformer_block4 = nn.TransformerEncoderLayer(
             d_model=512, nhead=4, dim_feedforward=1024, dropout=0.0
