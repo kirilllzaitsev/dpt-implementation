@@ -63,6 +63,7 @@ class HybridFeatureExtractor(nn.Module):
         cnn_backbone="resnet50",
         transformer_backbone="vitb",
         transformer_kwargs=None,
+        cnn_kwargs=None,
     ):
         super().__init__()
 
@@ -71,8 +72,9 @@ class HybridFeatureExtractor(nn.Module):
         self.transformer_kwargs = (
             {} if transformer_kwargs is None else transformer_kwargs
         )
+        self.cnn_kwargs = {} if cnn_kwargs is None else cnn_kwargs
 
-        self.cnn_extractor = CNNFeatureExtractor(cnn_backbone)
+        self.cnn_extractor = CNNFeatureExtractor(cnn_backbone, **self.cnn_kwargs)
         self.transformer_extractor = TransformerFeatureExtractor(
             transformer_backbone, **self.transformer_kwargs
         )
