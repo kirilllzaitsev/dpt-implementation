@@ -5,10 +5,17 @@ import torchvision.models.feature_extraction
 
 
 class CNNFeatureExtractor(nn.Module):
-    def __init__(self, backbone=None):
+    def __init__(self, backbone="resnet50", weights="DEFAULT"):
         super().__init__()
         self.backbone = backbone
-        self.model = torchvision.models.resnet18(weights="DEFAULT")
+
+        if backbone == "resnet18":
+            self.model = torchvision.models.resnet18(weights=weights)
+        elif backbone == "resnet50":
+            self.model = torchvision.models.resnet50(weights=weights)
+        else:
+            raise ValueError(f"Unsupported backbone: {backbone}")
+
         self.model.fc = nn.Identity()
         self.features = torchvision.models.feature_extraction.create_feature_extractor(
             self.model,
@@ -21,13 +28,22 @@ class CNNFeatureExtractor(nn.Module):
 
 
 class TransformerFeatureExtractor(nn.Module):
-    def __init__(self, backbone=None, weights="DEFAULT", image_size=224):
+
+    def __init__(self, backbone="vitb", weights="DEFAULT", image_size=224):
         if weights == "DEFAULT":
             assert image_size == 224, "To use pretrained, image_size must be 224"
 
         super().__init__()
         self.backbone = backbone
-        self.model = torchvision.models.vit_b_16(weights=weights, image_size=image_size)
+
+        model_init_kwargs = {"weights": weights, "image_size": image_size}
+        if backbone == "vitb":
+            self.model = torchvision.models.vit_b_16(**model_init_kwargs)
+        elif backbone == "vitl":
+            self.model = torchvision.models.vit_l_16(**model_init_kwargs)
+        else:
+            raise ValueError(f"Unsupported backbone: {backbone}")
+
         self.model.heads = nn.Identity()
         self.features = torchvision.models.feature_extraction.create_feature_extractor(
             self.model,
@@ -43,7 +59,10 @@ class TransformerFeatureExtractor(nn.Module):
 
 class HybridFeatureExtractor(nn.Module):
     def __init__(
-        self, cnn_backbone=None, transformer_backbone=None, transformer_kwargs=None
+        self,
+        cnn_backbone="resnet50",
+        transformer_backbone="vitb",
+        transformer_kwargs=None,
     ):
         super().__init__()
 
