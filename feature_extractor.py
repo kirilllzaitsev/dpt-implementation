@@ -41,15 +41,24 @@ class TransformerFeatureExtractor(nn.Module):
             self.model = torchvision.models.vit_b_16(**model_init_kwargs)
         elif backbone == "vitl":
             self.model = torchvision.models.vit_l_16(**model_init_kwargs)
+        elif backbone == "dino":
+            self.model = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14")
         else:
             raise ValueError(f"Unsupported backbone: {backbone}")
 
+        if backbone == "dino":
+            self.encoder_layer_name_prefix = "blocks."
+        else:
+            self.encoder_layer_name_prefix = "encoder.layers.encoder_layer_"
         self.model.heads = nn.Identity()
-        self.features = torchvision.models.feature_extraction.create_feature_extractor(
-            self.model,
-            return_nodes={
-                f"encoder.layers.encoder_layer_{i}": str(i) for i in range(2, 12, 3)
-            },
+        self.features = (
+            torchvision.models.feature_extraction.create_feature_extractor(
+                self.model,
+                return_nodes={
+                    f"{self.encoder_layer_name_prefix}{i}": str(i)
+                    for i in range(2, 12, 3)
+                },
+            )
         )
 
     def forward(self, x):
