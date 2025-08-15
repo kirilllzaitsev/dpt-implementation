@@ -47,18 +47,17 @@ class TransformerFeatureExtractor(nn.Module):
             raise ValueError(f"Unsupported backbone: {backbone}")
 
         if backbone == "dino":
-            self.encoder_layer_name_prefix = "blocks."
+            raise NotImplementedError(
+                "Dino does not support create_feature_extractor API"
+            )
         else:
             self.encoder_layer_name_prefix = "encoder.layers.encoder_layer_"
         self.model.heads = nn.Identity()
-        self.features = (
-            torchvision.models.feature_extraction.create_feature_extractor(
-                self.model,
-                return_nodes={
-                    f"{self.encoder_layer_name_prefix}{i}": str(i)
-                    for i in range(2, 12, 3)
-                },
-            )
+        self.features = torchvision.models.feature_extraction.create_feature_extractor(
+            self.model,
+            return_nodes={
+                f"{self.encoder_layer_name_prefix}{i}": str(i) for i in range(2, 12, 3)
+            },
         )
 
     def forward(self, x):
