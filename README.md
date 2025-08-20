@@ -20,6 +20,10 @@ python main.py --lr 5e-4 --epochs 200 --device cuda
 
 The script will fit a model to a single sample from the [KITTI depth estimation dataset](https://www.cvlibs.net/datasets/kitti/eval_depth.php?benchmark=depth_prediction), stored in `sample_data/`.
 
+A sample result:
+
+![Sample Result](./assets/sample_output.png)
+
 ## Delta with the official implementation
 
 Official implementation can be found at https://github.com/isl-org/DPT.
