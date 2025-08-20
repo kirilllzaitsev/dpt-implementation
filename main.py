@@ -1,8 +1,10 @@
 import logging
 from collections import defaultdict
 
+import cv2
 import numpy as np
 import torch
+import torchvision
 from dpt import DPT
 from tqdm import tqdm
 
@@ -58,7 +60,23 @@ class Trainer:
 
 
 def main(args):
-    x = torch.randn(1, 3, 256, 256)
+    depth_path = "./sample_data/2011_09_26_drive_0002_sync_groundtruth_depth_0000000005_image_02.png"
+    rgb_path = depth_path.replace("groundtruth_depth", "image")
+    depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+    depth = depth.astype(np.float32) / 256.0  # to m
+    rgb = cv2.imread(rgb_path, cv2.IMREAD_COLOR)[:, :, ::-1]
+    rgb = np.array(rgb)
+
+    rgb_transform = (
+        lambda x: torch.from_numpy(np.array(x)).float().permute(2, 0, 1) / 255.0
+    )
+    x = rgb_transform(rgb).unsqueeze(0)
+    y = torch.from_numpy(depth).unsqueeze(0).unsqueeze(0)
+
+    target_hw = (384, 384)
+    x = torchvision.transforms.CenterCrop(target_hw)(x)
+    y = torchvision.transforms.CenterCrop(target_hw)(y)
+
     hw = x.shape[-2:]
     dpt = DPT(hw=hw)
     trainer = Trainer(args=args, model=dpt)
@@ -66,7 +84,7 @@ def main(args):
     train_loader = [
         {
             "image": x.to(args.device),
-            "depth": torch.randn(1, 1, 256, 256).to(args.device),
+            "depth": y.to(args.device),
         }
     ]
     val_loader = train_loader
