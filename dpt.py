@@ -118,6 +118,8 @@ class DPT(nn.Module):
     def __init__(self, hw, extractor_name="resnet50"):
         super().__init__()
 
+        self.extractor_name = extractor_name
+
         self.hw = to_tuple(hw)
 
         if "vit_" in extractor_name:
@@ -130,21 +132,17 @@ class DPT(nn.Module):
             self.extractor = CNNFeatureExtractor(backbone=extractor_name)
 
         # for cnn extractor
-        block4_inch = 512
-        block3_inch = 256
-        block2_inch = 128
-        block1_inch = 64
         self.transformer_block4 = nn.TransformerEncoderLayer(
-            d_model=block4_inch, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=self.extractor.feature_dims[3], nhead=4, dim_feedforward=1024, dropout=0.0
         )
         self.transformer_block3 = nn.TransformerEncoderLayer(
-            d_model=block3_inch, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=self.extractor.feature_dims[2], nhead=4, dim_feedforward=1024, dropout=0.0
         )
         self.transformer_block2 = nn.TransformerEncoderLayer(
-            d_model=block2_inch, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=self.extractor.feature_dims[1], nhead=4, dim_feedforward=1024, dropout=0.0
         )
         self.transformer_block1 = nn.TransformerEncoderLayer(
-            d_model=block1_inch, nhead=4, dim_feedforward=1024, dropout=0.0
+            d_model=self.extractor.feature_dims[0], nhead=4, dim_feedforward=1024, dropout=0.0
         )
 
         # transformer extractor does not need another transformer layer
@@ -153,27 +151,21 @@ class DPT(nn.Module):
             self.transformer_block3 = nn.Identity()
             self.transformer_block2 = nn.Identity()
             self.transformer_block1 = nn.Identity()
-            block4_inch = 768
-            block3_inch = 768
-            block2_inch = 768
-            block1_inch = 768
         elif extractor_name == "hybrid":
             self.transformer_block4 = nn.Identity()
             self.transformer_block3 = nn.Identity()
-            block4_inch = 768
-            block3_inch = 768
 
         self.reassemble_block4 = ReassembleBlock(
-            s=32, inch=block4_inch, outch=128, hw=self.hw
+            s=32, inch=self.extractor.feature_dims[3], outch=128, hw=self.hw
         )
         self.reassemble_block3 = ReassembleBlock(
-            s=16, inch=block3_inch, outch=128, hw=self.hw
+            s=16, inch=self.extractor.feature_dims[2], outch=128, hw=self.hw
         )
         self.reassemble_block2 = ReassembleBlock(
-            s=8, inch=block2_inch, outch=128, hw=self.hw
+            s=8, inch=self.extractor.feature_dims[1], outch=128, hw=self.hw
         )
         self.reassemble_block1 = ReassembleBlock(
-            s=4, inch=block1_inch, outch=128, hw=self.hw
+            s=4, inch=self.extractor.feature_dims[0], outch=128, hw=self.hw
         )
         self.fusion_block4 = FusionBlock(inch=128, outch=128)
         self.fusion_block3 = FusionBlock(inch=128, outch=128)

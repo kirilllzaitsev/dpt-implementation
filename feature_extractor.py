@@ -11,8 +11,10 @@ class CNNFeatureExtractor(nn.Module):
 
         if backbone == "resnet18":
             self.model = torchvision.models.resnet18(weights=weights)
+            self.feature_dims = [64, 128, 256, 512]
         elif backbone == "resnet50":
             self.model = torchvision.models.resnet50(weights=weights)
+            self.feature_dims = [256, 512, 1024, 2048]
         else:
             raise ValueError(f"Unsupported backbone: {backbone}")
 
@@ -59,6 +61,7 @@ class TransformerFeatureExtractor(nn.Module):
                 f"{self.encoder_layer_name_prefix}{i}": str(i) for i in range(2, 12, 3)
             },
         )
+        self.feature_dims = [768, 768, 768, 768]
 
     def forward(self, x):
         features = self.features(x)
@@ -85,6 +88,9 @@ class HybridFeatureExtractor(nn.Module):
         self.cnn_extractor = CNNFeatureExtractor(cnn_backbone, **self.cnn_kwargs)
         self.transformer_extractor = TransformerFeatureExtractor(
             transformer_backbone, **self.transformer_kwargs
+        )
+        self.feature_dims = (
+            self.cnn_extractor.feature_dims[:2] + self.transformer_extractor.feature_dims[2:4]
         )
 
     def forward(self, x):
