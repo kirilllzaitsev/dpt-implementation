@@ -7,6 +7,12 @@ from dpt import DPT
 from tqdm import tqdm
 
 
+def silog_loss(pred, y, lambda_=0.85):
+    mask = (y > 0) & (pred > 0)
+    d = torch.log(pred[mask]) - torch.log(y[mask])
+    return torch.sqrt((d**2).mean() - lambda_ * (d.mean() ** 2))
+
+
 class Trainer:
 
     def __init__(self, args, model):
@@ -48,7 +54,7 @@ class Trainer:
         return hist
 
     def compute_loss(self, outputs, batch):
-        return torch.nn.functional.l1_loss(outputs["depth"], batch["depth"])
+        return silog_loss(outputs["depth"], batch["depth"])
 
 
 def main(args):
