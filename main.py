@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchvision
@@ -90,7 +91,27 @@ def main(args):
     val_loader = train_loader
 
     dataloaders = {"train": train_loader, "val": val_loader}
-    trainer.train(dataloaders=dataloaders)
+    hist = trainer.train(dataloaders=dataloaders)
+
+    # show preds
+    pred = dpt(x.to(args.device))["depth"]
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    im = axs[0].imshow(pred[0, 0].detach().cpu().numpy(), cmap="plasma")
+    axs[0].set_title("Predicted")
+    im2 = axs[1].imshow(y[0, 0].detach().cpu().numpy(), cmap="plasma")
+    axs[1].set_title("GT")
+    plt.colorbar(im, orientation="vertical", ax=axs[0], fraction=0.02, pad=0.04)
+    plt.colorbar(im2, orientation="vertical", ax=axs[1], fraction=0.02, pad=0.04)
+    plt.tight_layout()
+    plt.show()
+    # show losses
+    plt.figure(figsize=(10, 5))
+    plt.plot(hist["train_loss"], label="train")
+    plt.plot(hist["val_loss"], label="val")
+    plt.xlabel("epoch")
+    plt.ylabel("loss")
+    plt.legend()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -103,7 +124,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=5e-4)
-    parser.add_argument("--epochs", type=int, default=200)
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument(
         "--device", default="cuda" if torch.cuda.is_available() else "cpu"
     )
